@@ -1,11 +1,7 @@
 import time
-from queue import Empty
-from matplotlib.font_manager import json_dump
-from matplotlib.pyplot import text
-from numpy import empty
 from web3 import Web3  # if your wanna use this package, please google it, becasue it need you download a C++ maker first.
 import requests
-import json
+from ujson import json
 
 
 global_mykey="Your Etherscan developer key"
@@ -84,7 +80,7 @@ def contract_checker(parenthetical):
     if contract is None:
         w3, contract = web3_provider_and_contract_source_code(file_address)
     try:
-        if not contract.get_function_by_selector(parenthetical["signature"]):
+        if not contract.get_function_by_selector(parenthetical["signature"]):  # can we simplify there ?
             parenthetical = format_exchange(parenthetical)
             wrong[parenthetical["name"]] = parenthetical
             parenthetical["stauts"] = "cannot match with Etherscan"
