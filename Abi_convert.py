@@ -1,17 +1,18 @@
+from argparse import ArgumentError
 import time
-from web3 import Web3  
+from web3 import Web3  # if your wanna use this package, please google it, becasue it need you download a C++ maker first.
 import requests
-from ujson import json
+import json
 
 
-global_mykey="Your Etherscan developer key"
+global_mykey="KCZFUVHX2EBKU1TRYN5NAI31KHTQSYNPRK"
 ABI = object
 file_address = object
 wrong = {}
 contract = None
 
 def web3_provider_and_contract_source_code(Address):
-    w3 = Web3(Web3.HTTPProvider("https://mainnet.infura.io/v3/your infra project code"))
+    w3 = Web3(Web3.HTTPProvider("https://mainnet.infura.io/v3/e871b52e91224b89a26ce7aad3857819"))
     if  w3.isConnected == False:
         print("Web3 opening failed, check web3 connection")
         return None
@@ -47,15 +48,20 @@ def function_hash(fname, full_name):
 def format_exchange(parenthetical):    
     different_types={}
     full_name="("
+    if (parenthetical["type"] == "constructor" or parenthetical["type"] == "fallback"): 
+        parenthetical["signature"] = parenthetical["type"]
+        return parenthetical
     for bracket in parenthetical['inputs']:
-        if bracket["internalType"] != bracket["type"]:
-            different_types[parenthetical["type"]]=bracket
+        try:
+            if bracket["internalType"] != bracket["type"]:
+                different_types[parenthetical["type"]]=bracket
+        except KeyError:
+            pass
         full_name += bracket["type"] + ","
     if full_name == "(":    #  if function has no input, the full_name will be "(" in there
         full_name += ")"     # actually, there could add anything, cuz in next line it will be deleted, add ")" is to keep "(" in variable
     full_name=full_name[ : -1] + ")"
-    if (parenthetical["type"] == "constructor"): parenthetical["signature"] = "Constructor"
-    elif (parenthetical["type"] == "event"): parenthetical["signature"] =   function_hash(parenthetical["name"], full_name)  #  event_hash(parenthetical["name"])
+    if (parenthetical["type"] == "event"): parenthetical["signature"] =   function_hash(parenthetical["name"], full_name)  #  event_hash(parenthetical["name"])
     else: parenthetical["signature"] = function_hash(parenthetical["name"] , full_name)[0:10]
     return parenthetical
 
@@ -76,7 +82,7 @@ def abi_writer(input_path, abi_files, files_name):
     final_step.close()
     return
 
-def contract_checker(parenthetical):  # do we really need this ? You can check web3 file /python3.10/Lib/site-packages/eth_abi/abi
+def contract_checker(parenthetical):
     global contract
     if contract is None:
         w3, contract = web3_provider_and_contract_source_code(file_address)
@@ -91,17 +97,21 @@ def contract_checker(parenthetical):  # do we really need this ? You can check w
 
 def main():
     global file_address 
-    path = input("input your path: ")
-    file_address = "0xc4269cc7acdedc3794b221aa4d9205f564e27f0d"  # this address will lead your to contract "Flapper"
+    path =  "D:/pycharm/simulate/ABI_files/"  # input("input your path: ")
+    file_address = "0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f"  # this address will lead your to contract "Flapper"
     
-    abi=Abi_geter("0xc4269cc7acdedc3794b221aa4d9205f564e27f0d")
+    abi=Abi_geter("0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f")
     if  not abi:
         print("cannot get abi, exception occured.")
         return
     abi= ABI_adjustor(abi)
     if wrong:
         print("Unmatched method id occured, please go to json file to check later")
-    abi_writer(path, abi, "0xc4269cc7acdedc3794b221aa4d9205f564e27f0d")  # remeber to add a backslash "/" in the last of your path
+        time.sleep(3)
+        for i in wrong:
+            print(i + ": " + wrong[i])
+        time.sleep(6)
+    abi_writer(path, abi, "0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f")  # remeber to add a backslash "/" in the last of your path
     # e.g D:/user/ABI_files/
 main()
 
