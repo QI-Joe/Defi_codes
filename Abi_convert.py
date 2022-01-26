@@ -1,5 +1,5 @@
 import time
-from web3 import Web3  # if your wanna use this package, please google it, becasue it need you download a C++ maker first.
+from web3 import Web3  
 import requests
 from ujson import json
 
@@ -17,6 +17,7 @@ def web3_provider_and_contract_source_code(Address):
         return None
     Address=Web3.toChecksumAddress(Address)
     contract = w3.eth.contract(address=Address, abi= ABI["result"])
+    decode = contract.decode_function_input
     return w3, contract
 
 def Abi_geter(Address):
@@ -75,7 +76,7 @@ def abi_writer(input_path, abi_files, files_name):
     final_step.close()
     return
 
-def contract_checker(parenthetical):
+def contract_checker(parenthetical):  # do we really need this ? You can check web3 file /python3.10/Lib/site-packages/eth_abi/abi
     global contract
     if contract is None:
         w3, contract = web3_provider_and_contract_source_code(file_address)
@@ -100,10 +101,7 @@ def main():
     abi= ABI_adjustor(abi)
     if wrong:
         print("Unmatched method id occured, please go to json file to check later")
-        time.sleep(3)
-        for i in wrong:
-            print(i + ": " + wrong[i])
-        time.sleep(6)
     abi_writer(path, abi, "0xc4269cc7acdedc3794b221aa4d9205f564e27f0d")  # remeber to add a backslash "/" in the last of your path
     # e.g D:/user/ABI_files/
 main()
+
