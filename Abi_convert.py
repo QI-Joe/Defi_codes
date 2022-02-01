@@ -1,18 +1,17 @@
-from argparse import ArgumentError
 import time
-from web3 import Web3  # if your wanna use this package, please google it, becasue it need you download a C++ maker first.
+from web3 import Web3  
 import requests
-import json
+from ujson import json
 
 
-global_mykey="KCZFUVHX2EBKU1TRYN5NAI31KHTQSYNPRK"
+global_mykey="Your Etherscan developer key"
 ABI = object
 file_address = object
 wrong = {}
 contract = None
 
 def web3_provider_and_contract_source_code(Address):
-    w3 = Web3(Web3.HTTPProvider("https://mainnet.infura.io/v3/e871b52e91224b89a26ce7aad3857819"))
+    w3 = Web3(Web3.HTTPProvider("https://mainnet.infura.io/v3/your infra project code"))
     if  w3.isConnected == False:
         print("Web3 opening failed, check web3 connection")
         return None
@@ -31,39 +30,20 @@ def Abi_geter(Address):
     ABI=Abi
     return Abi
 
-def function_hash(fname, full_name):
-    if fname is None or fname == "":
-        print('"parenthetical["name"] error read. check function."')
-        return False
-    
-    if full_name is None or full_name=="":
-        print('"full_name read error. check function."')
-        return False
-    
-    full_name = (fname + full_name).strip()
+def function_hash(item:dict):
+    if ('inputs' not in item.keys()):
+        return
+    input_list = [input_item['type'] for input_item in item['inputs']]
+    full_name = item['name'] + '(' + ','.join(input_list) + ')'
     fhash=Web3.keccak(text = full_name)
     fhash=fhash.hex()
     return fhash
 
-def format_exchange(parenthetical):    
-    different_types={}
-    full_name="("
-    if (parenthetical["type"] == "constructor" or parenthetical["type"] == "fallback"): 
-        parenthetical["signature"] = parenthetical["type"]
-        return parenthetical
-    for bracket in parenthetical['inputs']:
-        try:
-            if bracket["internalType"] != bracket["type"]:
-                different_types[parenthetical["type"]]=bracket
-        except KeyError:
-            pass
-        full_name += bracket["type"] + ","
-    if full_name == "(":    #  if function has no input, the full_name will be "(" in there
-        full_name += ")"     # actually, there could add anything, cuz in next line it will be deleted, add ")" is to keep "(" in variable
-    full_name=full_name[ : -1] + ")"
-    if (parenthetical["type"] == "event"): parenthetical["signature"] =   function_hash(parenthetical["name"], full_name)  #  event_hash(parenthetical["name"])
-    else: parenthetical["signature"] = function_hash(parenthetical["name"] , full_name)[0:10]
-    return parenthetical
+def format_exchange(parenthetical):
+    if (parenthetical["type"] == "function"): parenthetical["signature"] = function_hash(parenthetical)[0:10]
+    elif (parenthetical["type"] == "event"): parenthetical["signature"] =   function_hash(parenthetical)  #  event_hash(parenthetical["name"])
+    else: parenthetical["signature"] = parenthetical["type"]
+    return parenthetical 
 
 def ABI_adjustor(Abi):
     if Abi['message']!='OK' or (Abi['result'] is None): 
@@ -82,7 +62,7 @@ def abi_writer(input_path, abi_files, files_name):
     final_step.close()
     return
 
-def contract_checker(parenthetical):
+def contract_checker(parenthetical):  # do we really need this ? You can check web3 file /python3.10/Lib/site-packages/eth_abi/abi
     global contract
     if contract is None:
         w3, contract = web3_provider_and_contract_source_code(file_address)
@@ -97,21 +77,17 @@ def contract_checker(parenthetical):
 
 def main():
     global file_address 
-    path =  "D:/pycharm/simulate/ABI_files/"  # input("input your path: ")
-    file_address = "0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f"  # this address will lead your to contract "Flapper"
+    path = input("input your path: ")
+    file_address = "0xc4269cc7acdedc3794b221aa4d9205f564e27f0d"  # this address will lead your to contract "Flapper"
     
-    abi=Abi_geter("0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f")
+    abi=Abi_geter("0xc4269cc7acdedc3794b221aa4d9205f564e27f0d")
     if  not abi:
         print("cannot get abi, exception occured.")
         return
     abi= ABI_adjustor(abi)
     if wrong:
         print("Unmatched method id occured, please go to json file to check later")
-        time.sleep(3)
-        for i in wrong:
-            print(i + ": " + wrong[i])
-        time.sleep(6)
-    abi_writer(path, abi, "0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f")  # remeber to add a backslash "/" in the last of your path
+    abi_writer(path, abi, "0xc4269cc7acdedc3794b221aa4d9205f564e27f0d")  # remeber to add a backslash "/" in the last of your path
     # e.g D:/user/ABI_files/
 main()
 
