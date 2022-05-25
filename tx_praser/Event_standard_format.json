@@ -1,0 +1,15 @@
+{
+    "anonymous": false,
+    "inputs": [
+        {
+            "indexed": false,
+            "internalType": "",
+            "name": "",
+            "type": "",
+            "result": ""
+        }
+    ],
+    "name": "",
+    "type" : "event",
+    "signature": ""
+}
