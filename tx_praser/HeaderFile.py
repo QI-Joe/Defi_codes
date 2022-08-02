@@ -20,6 +20,6 @@ import json as basic_json
 import ujson as json
 import os
 import multiprocessing as process
-import pandas
+import pandas as pd
 import requests
 import ntpath
