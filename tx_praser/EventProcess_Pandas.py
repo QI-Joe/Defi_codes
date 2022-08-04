@@ -101,7 +101,7 @@ class Event_checker:
         """
     def camouflage(self, func_ABI: dict, target: hf.structure.AttributeDict):
         if self.template == None:
-            with open(r"D:/pycharm/simulate/ABI_files/Event_standard_format.json", 'r') as tarfile:
+            with open(r"Event_standard_format.json", 'r') as tarfile:
                 self.template = hf.json.load(tarfile)
         func_ABI["inputs"][ : ] = [{**self.template["inputs"][0], **value} for value in func_ABI["inputs"]]
         func_ABI = {**self.template, **func_ABI}
