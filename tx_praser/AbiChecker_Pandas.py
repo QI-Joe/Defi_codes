@@ -89,7 +89,7 @@ class Checker:
         self.aggrCon["functions"],
         self.aggrCon["event"], 
         )
-        lofo = logs.event_spliter()
+        lofo = logs.assumble()
         lofo
         return 
     
