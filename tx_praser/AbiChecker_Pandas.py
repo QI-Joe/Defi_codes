@@ -16,12 +16,16 @@ class Checker:
         
     def file_get(self, Address : str) :  # Address in there has been checked
         self.aggrCon = self.w3provider.combine_tx(Address)
-        if not self.aggrCon: return 
+        if not self.aggrCon: return False
     
     # will using multiprocessing to faster the programming
     def total_console(self):
-        # for future in concurrent.futures.as_completed():
-        # using multithreading to accelerate the I/O part
+        """
+        logs on August 10th: 
+        1. codes cannot well processed non contract tx
+        due to multiple return to quit need many spare time and memory...
+        2. result output cannot efficient decide existence of header
+        """
         with hf.Thruser.ThreadPoolExecutor(max_workers=2) as executor:
             tx : hf.Future = executor.submit(self.w3.eth.get_transaction, self.tx_hash)
             receipt : hf.Future = executor.submit(self.w3.eth.get_transaction_receipt, self.tx_hash)
@@ -31,37 +35,43 @@ class Checker:
         print("exection of event finsihed")
         return 
     
-    # used to decode input
-    def decode_tx_input(self, tx_input : hf.structure.AttributeDict) :
-        # used to test decode_tx_input running time
-        func_name = hf.sys._getframe().f_code.co_name
-        if type(func_name) != str:
-            func_name = str(func_name)        
+    def decode_tx_input(self, tx_input : hf.structure.AttributeDict) :      
+        """decode input
+        the way use pandas to flatten nested JSON file from there:
+        https://stackoverflow.com/questions/52795561/flattening-nested-json-in-pandas-data-frame
+
+        Args:
+            tx_input (hf.structure.AttributeDict): the AttributeDict from Ethereum API
+
+        Returns:
+            None
+            
+        Raise:
+            KeyError: 
+        """
         contract = self.w3provider._contract_factory_geter()
         matched = None
         try:
             matched = self.aggrCon["functions"][tx_input['input'][0:10]].copy()
         except KeyError:
             return 0, False
-        
         if matched == None: 
             print("input cannot match with current ABI files")
             return 0, False
-        
         tx_input = {key : (value.hex() 
         if type(value) is hf.hexbytes.main.HexBytes else value) 
         for key, value in dict(tx_input).items()}
         
         tx_input = {**tx_input, **matched}
-        # first iteration  json.normlization may help
         input_result = contract.decode_function_input(tx_input["input"])
         for inputs_index in range(len(input_result[1])):
             deInput = input_result[1][matched['inputs'][inputs_index]['name']]
-            tx_input['inputs'][inputs_index]['result'] = deInput.hex() if type(deInput) in [hf.hexbytes.main.HexBytes, bytes] else deInput
+            tx_input['inputs'][inputs_index]['result'] = (deInput.hex() 
+                                                                                if type(deInput) in [hf.hexbytes.main.HexBytes, bytes] 
+                                                                                else deInput)
         tx_input['function full name'] = str(input_result[0])
         del tx_input["input"]
-        # reference here https://stackoverflow.com/questions/52795561/flattening-nested-json-in-pandas-data-frame 
-        # here we transform our dict to dataFrame first
+
         tx_input = (hf.pd.json_normalize(tx_input, max_level=3)
         .apply(hf.pd.Series.explode)
         .reset_index()
@@ -72,7 +82,6 @@ class Checker:
             target = hf.pd.json_normalize(tx_input[item], sep=".")
             target.columns = [f"{item}_{v}" for v in target.columns]
             normalized.append(target.copy())
-        # solution one, we wont combine all rows into one, instead we would make it in duplicate rows
         tx_input = hf.pd.concat([tx_input.drop(columns = column_to_norm)] + normalized , axis = 1)
         # here, a tx_input file is needed before go ahead
         tx_input.to_csv("ABI_FIle_generator/CSVfiles/tx_input.csv",
@@ -95,7 +104,7 @@ class Checker:
     
 def starter(txList: list):
     for tx in txList:
-        JackThr: Checker = Checker(tx)
+        JackThr: Checker = Checker(tx.hex())
         JackThr.total_console()
     return True
 

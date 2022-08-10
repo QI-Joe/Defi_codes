@@ -23,13 +23,21 @@ class Event_checker:
     # this loop is used for single process running
         for ievent in self.receipt["logs"]:  
             event_result = self.event_decoder(ievent)
-            if event_result is not False: continue 
+            if not event_result: continue 
             matched_event.append(event_result)
         return matched_event 
        
     def event_decoder(self, event : dict):
+        """decode logs in event
+
+        Args:
+            event (dict): logs raw info from Ethereum API
+
+        Returns:
+            boolean: true or not the programming running normally
+        """
         # simplfy there
-        if event["topics"][0].hex()[10 :] == "00000000000000000000000000000000000000000000000000000000":
+        if event["topics"][0].hex()[10 :] == "0" * 56:
             new_event : dict = self.w3.combine_tx(event['address'])
             self.func = new_event["functions"]
             try:
@@ -37,14 +45,10 @@ class Event_checker:
             except KeyError: return False    
             inpuEvent: dict = self.camouflage(matchedInput, event)
             event = inpuEvent["ChengedEvent"]
-            self.event = {**{event["topics"][0].hex() :inpuEvent["digused ABI"].copy()}, **self.event}
+            self.event = {event["topics"][0].hex() : inpuEvent["digused ABI"]}
         # retrieve if the coressponding ABI has been read or not
         elif event['topics'][0].hex() not in self.event:
-            new_event : dict = self.w3.combine_tx(event['address'])
-            try:
-                # merge the two dict and update self.event
-                self.event = {**self.event, **new_event['event']} 
-            except TypeError: return False
+            self.event : dict = self.w3.combine_tx(event['address'])
         
         try:
             result : dict = self.event[event['topics'][0].hex()].copy()
@@ -61,8 +65,8 @@ class Event_checker:
         for index in range(len(result['inputs'])):
             pointer = result['inputs'][index]['name']
             result['inputs'][index]['result'] = (counterpart["args"][pointer].hex()
-            if isinstance(counterpart["args"][pointer], hf.hexbytes.main.HexBytes) or isinstance(counterpart["args"][pointer], bytes)
-            else counterpart["args"][pointer])
+                                                                if isinstance(counterpart["args"][pointer], hf.hexbytes.main.HexBytes) or isinstance(counterpart["args"][pointer], bytes)
+                                                                else counterpart["args"][pointer])
         del counterpart["args"]
         
         result = (hf.pd.json_normalize({**result, **counterpart}, max_level=3)
@@ -76,54 +80,58 @@ class Event_checker:
         mode = "a",
         index = False,
         header = False if not hf.os.stat("ABI_FIle_generator/CSVfiles/txs_events.csv").st_size else True)
-        return result
+        return True
     
     def position_checker(self, Postart: int):
         if not (Postart-1) % 64 or Postart == 7: return False
         return True
     
-    def indexed_marker(self, totalData: list, indexedList: list, input_ABI: list):
+    def indexed_marker(self, trueInput: list, indexedList: list, input_ABI: list):
         for indexed in range(len(indexedList)):
-            if indexedList[indexed] in totalData:
+            if indexedList[indexed] in trueInput:
                 input_ABI[indexed]['indexed'] = True
     
+       
+    def camouflage(self, func_ABI: dict, target: hf.structure.AttributeDict):
         """
-        @args func_ABI is matchedInput from line39, mainly stores ABI without info data
-        @args target is logs with input info
-        
         merge value with same key in both dicts in dict layer to keep code concise
         this expression only suit for python 3.5+, for detail you can refer to
         https://stackoverflow.com/questions/71546879/how-to-assign-value-in-dict1-to-dict2-if-the-key-are-the-same-without-loop
+        
+        Args:
+            func_ABI is matchedInput from line39, mainly stores ABI without info data
+            target is logs with input info
+                
+        Return:
+            dict contain modified decodable ABI and receipt
+            
+        Raises:
+            ValueError
         """
-        """
-        for value in func_ABI["inputs"]:
-            value = {**self.template["inputs"][0], **value}
-        """
-    def camouflage(self, func_ABI: dict, target: hf.structure.AttributeDict):
         if self.template == None:
-            with open(r"Event_standard_format.json", 'r') as tarfile:
+            with open(r"D:/pycharm/simulate/ABI_files/Event_standard_format.json", 'r') as tarfile:
                 self.template = hf.json.load(tarfile)
+        func_ABI["type"] = "event"
         func_ABI["inputs"][ : ] = [{**self.template["inputs"][0], **value} for value in func_ABI["inputs"]]
         func_ABI = {**self.template, **func_ABI}
         vaLength = len(func_ABI["inputs"])
         
-        # second step, change item topics and data in target
         topics: list = [topic.hex()[2: ] for topic in target['topics']]
         Postart: int = target['data'].find(topics[0][: 8]) + 8
         if not self.position_checker(Postart):
             # later add a function to skip the part and record it into logs
             raise ValueError("there is similar singature appear, check the status.")
         trueInput: list = [target['data'][Postart+tarval*64 : Postart + 64* (tarval+1)] for tarval in range(vaLength)]
-        indexed: list = [trueInput[indexedval] for indexedval in range(len(trueInput)) if trueInput[indexedval] in topics and indexedval<3]
-        # rerturn type of event_abi_to_log_topic has already been hexbytes type 
-        func_ABI["type"] = "event"
         target = target.__dict__
-        target['topics'] = list(map(hf.hexbytes.main.HexBytes, [hf.tools.event_abi_to_log_topic(func_ABI)] + indexed))
-        self.indexed_marker(trueInput, indexedList = indexed, input_ABI = func_ABI['inputs'])
-        # restore the data part.
-        differenceInput: list = [trueInput[Nval] for Nval in range(len(trueInput)) if trueInput[Nval] not in indexed or Nval+1>len(indexed)]  
-        target['data'] = "0x" + ''.join(map(str, differenceInput))
+        
+        target['topics'] = list(map(hf.hexbytes.main.HexBytes, [hf.tools.event_abi_to_log_topic(func_ABI)] + topics[1:]))
+        
+        self.indexed_marker(trueInput, indexedList = topics[1:], input_ABI = func_ABI['inputs'])
+        data: list = [val
+                          for val in trueInput 
+                          if val not in topics[1:]]  
+        target['data'] = "0x" + ''.join(map(str, data))
         target = hf.structure.AttributeDict(target)
-        return {"digused ABI" : func_ABI, "ChengedEvent": target, "indexedPar" : indexed}
+        return {"digused ABI" : func_ABI, "ChengedEvent": target}
     
 
