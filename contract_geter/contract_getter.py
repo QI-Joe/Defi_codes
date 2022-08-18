@@ -23,10 +23,8 @@ Cpfile: str = ""
 
 def Etherscan_labelWordCloud_geter(inputUrl: str):
     res = requests.get(url=inputUrl, headers=header, cookies=mycookies)
-    # print(res.text)
     result = busp(res.text, "html.parser")
     # time.sleep(1)
-    # print(result)
     return result
 
 
@@ -149,13 +147,8 @@ def LinkParser(eachlink: str, total: int):
 
 def EtherParser():
     labels: busp = Etherscan_labelWordCloud_geter(EtherCloud)
-    # print(labels)
     outer = labels.find_all("div", class_="col-md-4 col-lg-3 mb-3 secondary-container")
-    # print(outer)
-
     for items in outer:
-        # print(items)
-        # return
         layerOne: list = items.find_all("div")
         """
         in this step, you can use stence like:
