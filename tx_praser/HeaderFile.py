@@ -19,7 +19,7 @@ from web3 import Web3
 import json as basic_json
 import ujson as json
 import os
-import multiprocessing as process
+from multiprocessing.pool import ThreadPool
 import pandas as pd
 import requests
 import ntpath

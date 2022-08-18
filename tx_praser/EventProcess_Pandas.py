@@ -19,54 +19,48 @@ class Event_checker:
         return
     
     def assumble(self):
-        matched_event : list = []
-    # this loop is used for single process running
-        for ievent in self.receipt["logs"]:  
-            event_result = self.event_decoder(ievent)
-            if not event_result: continue 
-            matched_event.append(event_result)
-        return matched_event 
+        with hf.ThreadPool(processes=10) as executor:
+            executor.map(self.event_decoder, self.receipt["logs"]) 
+        # for ievent in self.receipt["logs"]:
+        #     result = self.event_decoder(ievent)
+        #     if not result: continue
+        return True
        
     def event_decoder(self, event : dict):
         """decode logs in event
-
+        logs on August 16th: remember to faltten the potenial existed array input
+        
         Args:
             event (dict): logs raw info from Ethereum API
 
         Returns:
             boolean: true or not the programming running normally
         """
-        # simplfy there
         if event["topics"][0].hex()[10 :] == "0" * 56:
             new_event : dict = self.w3.combine_tx(event['address'])
             self.func = new_event["functions"]
-            try:
+            if event["topics"][0].hex()[ :10] in self.func: 
                 matchedInput: hf.Any = self.func[event["topics"][0].hex()[ :10]]
-            except KeyError: return False    
+            else: return False    
             inpuEvent: dict = self.camouflage(matchedInput, event)
-            event = inpuEvent["ChengedEvent"]
-            self.event = {event["topics"][0].hex() : inpuEvent["digused ABI"]}
+            event, self.event = inpuEvent["ChengedEvent"], {"event" : inpuEvent["digused ABI"]}
         # retrieve if the coressponding ABI has been read or not
-        elif event['topics'][0].hex() not in self.event:
+        # w3.LOGWriter(Ltype="Logs", Logs=(str(event['address']), str(event['topics'][0].hex())))
+        elif not self.event or event['topics'][0].hex() not in self.event:
             self.event : dict = self.w3.combine_tx(event['address'])
-        
-        try:
-            result : dict = self.event[event['topics'][0].hex()].copy()
-        except KeyError: 
-            w3.LOGWriter(Ltype="Logs", Logs=(str(event['address']), str(event['topics'][0].hex())))
+            if not self.event: return False
+        else: return False
+        if event['topics'][0].hex() not in self.event["event"]:
             return False
-        
+        result : dict = self.event["event"][event['topics'][0].hex()]
         counterpart = hf.parser.get_event_data(self.w3._w3_geter().codec, result, event) 
         
-        counterpart = {key : (value.hex()
-        if type(value) is hf.hexbytes.main.HexBytes else value) 
+        counterpart = {key : w3.convert(value) 
         for key, value in counterpart.items()}
         
         for index in range(len(result['inputs'])):
             pointer = result['inputs'][index]['name']
-            result['inputs'][index]['result'] = (counterpart["args"][pointer].hex()
-                                                                if isinstance(counterpart["args"][pointer], hf.hexbytes.main.HexBytes) or isinstance(counterpart["args"][pointer], bytes)
-                                                                else counterpart["args"][pointer])
+            result['inputs'][index]['result'] = w3.convert(counterpart["args"][pointer])
         del counterpart["args"]
         
         result = (hf.pd.json_normalize({**result, **counterpart}, max_level=3)
@@ -74,12 +68,15 @@ class Event_checker:
         .reset_index()
         )
         target = hf.pd.json_normalize(result["inputs"], sep=".")
-        result: hf.pd.DataFrame = hf.pd.concat([result.drop(columns = "inputs"), target], axis=1)
-        
+        target.columns = [f"input_{v}" for v in target.columns]
+        result: hf.pd.DataFrame = (hf.pd.concat([result.drop(columns = "inputs"), target], axis=1)
+                                                    .explode("input_result"))
+        result.input_result =  result.input_result.apply(w3.convert)    
+        print(result.logIndex)
         result.to_csv("ABI_FIle_generator/CSVfiles/txs_events.csv",
         mode = "a",
         index = False,
-        header = False if not hf.os.stat("ABI_FIle_generator/CSVfiles/txs_events.csv").st_size else True)
+        header = True)
         return True
     
     def position_checker(self, Postart: int):
@@ -132,6 +129,6 @@ class Event_checker:
                           if val not in topics[1:]]  
         target['data'] = "0x" + ''.join(map(str, data))
         target = hf.structure.AttributeDict(target)
-        return {"digused ABI" : func_ABI, "ChengedEvent": target}
+        return {"digused ABI" : {target[topics][0] : func_ABI}, "ChengedEvent": target}
     
 

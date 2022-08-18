@@ -1,4 +1,3 @@
-from tkinter.messagebox import NO
 import HeaderFile as hf
 import neWeb3 as webp
 from EventProcess_Pandas import Event_checker as Evch
@@ -17,19 +16,20 @@ class Checker:
     def file_get(self, Address : str) :  # Address in there has been checked
         self.aggrCon = self.w3provider.combine_tx(Address)
         if not self.aggrCon: return False
+        return True
     
     # will using multiprocessing to faster the programming
     def total_console(self):
         """
-        logs on August 10th: 
-        1. codes cannot well processed non contract tx
-        due to multiple return to quit need many spare time and memory...
-        2. result output cannot efficient decide existence of header
+        logs on August 14th: 
+        1. input decoding must activate the contract factory, and changed contract not satisfy its requreiment
+        2. input decoding library has some special decoding methods...
         """
         with hf.Thruser.ThreadPoolExecutor(max_workers=2) as executor:
             tx : hf.Future = executor.submit(self.w3.eth.get_transaction, self.tx_hash)
             receipt : hf.Future = executor.submit(self.w3.eth.get_transaction_receipt, self.tx_hash)
-        self.file_get(hf.Web3.toChecksumAddress(tx.result().to))
+        greek = self.file_get(hf.Web3.toChecksumAddress(tx.result().to))
+        if not greek: return False
         self.decode_tx_input(tx.result())
         self.decode_tx_event(receipt.result())
         print("exection of event finsihed")
@@ -82,12 +82,15 @@ class Checker:
             target = hf.pd.json_normalize(tx_input[item], sep=".")
             target.columns = [f"{item}_{v}" for v in target.columns]
             normalized.append(target.copy())
-        tx_input = hf.pd.concat([tx_input.drop(columns = column_to_norm)] + normalized , axis = 1)
+        tx_input : hf.pd.DataFrame = (hf.pd.concat([tx_input.drop(columns = column_to_norm)] + normalized , axis = 1)
+                                                        .explode("inputs_result"))
+        tx_input.inputs_result = tx_input.inputs_result.apply(webp.convert)
+        
         # here, a tx_input file is needed before go ahead
         tx_input.to_csv("ABI_FIle_generator/CSVfiles/tx_input.csv",
         mode = "a",
         index = False,
-        header = False if not hf.os.stat("ABI_FIle_generator/CSVfiles/tx_input.csv").st_size else True)
+        header = False if hf.os.stat("ABI_FIle_generator/CSVfiles/tx_input.csv").st_size else True)
         # os.stat could only detect existed file
         
     # used to decode event
@@ -98,14 +101,11 @@ class Checker:
         self.aggrCon["functions"],
         self.aggrCon["event"], 
         )
-        lofo = logs.assumble()
-        lofo
+        logs.assumble()
         return 
     
 def starter(txList: list):
     for tx in txList:
-        JackThr: Checker = Checker(tx.hex())
+        JackThr: Checker = Checker(tx)
         JackThr.total_console()
     return True
-
-    

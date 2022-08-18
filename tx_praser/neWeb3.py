@@ -139,13 +139,22 @@ class W3:
         return result, {"functions": functions, "event": event}
     
     def combine_tx(self, contract_hash : str):
+        """formula (1) should switch position with formula (2)
+        used to get ABI file then parser/manuiplate them and store as JSON file in specific local position
+        in future will involve calling for database to take place storage functionality. 
+        
+        Args:
+            contract_hash (str): a string record contract hash
+
+        Returns:
+            dict: return a dict contain JSON type ABI file or a dict only contain false if there isnt mathced ABI file
+        """
         if contract_hash is None: return False
-        path : str= self.ABIreadPath(contract_hash)
-        ABIFile = self.Abi_Get(contract_hash, None)
-        if not ABIFile:  return False
-        # first, if we have Corresponding file
-        if self.contract_detect(path):
-            return self.pre_map(path) # ->dict
+        path : str= self.ABIreadPath(contract_hash)  
+        ABIFile = self.Abi_Get(contract_hash, None) # (1)
+        if not ABIFile:  return False  # (1)
+        if self.contract_detect(path):  # (2)
+            return self.pre_map(path)  # (2)
         
         #------need debugging here!!---------------
         abi, info = self.ABI_adjustor(ABIFile)
@@ -156,3 +165,7 @@ class W3:
         
         return info
     
+def convert(x):
+    if x.__class__ in  [hf.hexbytes.main.HexBytes, bytes]:
+        return x.hex()
+    return x
