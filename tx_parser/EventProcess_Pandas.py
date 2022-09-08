@@ -19,7 +19,7 @@ class Event_checker:
         return
     
     def assumble(self):
-        with hf.ThreadPool(processes=10) as executor:
+        with hf.ThreadPool(processes=8) as executor:
             executor.map(self.event_decoder, self.receipt["logs"]) 
         # for ievent in self.receipt["logs"]:
         #     result = self.event_decoder(ievent)
@@ -71,12 +71,13 @@ class Event_checker:
         target.columns = [f"input_{v}" for v in target.columns]
         result: hf.pd.DataFrame = (hf.pd.concat([result.drop(columns = "inputs"), target], axis=1)
                                                     .explode("input_result"))
+        result = result.rename(columns={"transactionHash" : "hash"})
         result.input_result =  result.input_result.apply(w3.convert)    
         print(result.logIndex)
-        result.to_csv("ABI_FIle_generator/CSVfiles/txs_events.csv",
-        mode = "a",
-        index = False,
-        header = True)
+        # result.to_csv("ABI_FIle_generator/CSVfiles/txs_events.csv",
+        # mode = "a",
+        # index = False,
+        # header = True)
         return True
     
     def position_checker(self, Postart: int):

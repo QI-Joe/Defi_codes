@@ -26,10 +26,6 @@ def Etherscan_labelWordCloud_geter(inputUrl : str):
     time.sleep(1)
     return result
 
-def pathSetting(name : str):
-    filePath = os.path.join(os.getcwd(), name)
-    return filePath
-
 # special build due to Etherscan current structure
 def number_counter(target : str):
     return int(target[target.index("(") + 1 : target.index(")") ])
@@ -135,8 +131,7 @@ def EtherParser():
                 for eleK, eleV in Eitems.items():
                     if stuffs[name].get(eleK):  stuffs[name][eleK] = [*stuffs[name][eleK], *eleV]
                     else: stuffs[name][eleK] = eleV
-        filePath = pathSetting("targetFile.json")
-        with open(filePath, "r+") as fp:
+        with open("targetFile.json", "r+") as fp:
             data : list= json.load(fp=fp)
             data = {**data, **stuffs}
             # reset file pointer to position 0
@@ -144,9 +139,8 @@ def EtherParser():
             json.dump(data, fp, indent=4)
 
 if __name__ == "__main__":
-    filePath = pathSetting("targetFile.json")
-    if not os.path.exists(filePath):
-        with open(filePath, "w") as file:
+    if not os.path.exists("targetFile.json"):
+        with open("targetFile.json", "w") as file:
             json.dump({}, file, indent=4)
     EtherParser()
     

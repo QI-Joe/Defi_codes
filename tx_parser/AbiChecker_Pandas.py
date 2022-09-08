@@ -106,6 +106,6 @@ class Checker:
     
 def starter(txList: list):
     for tx in txList:
-        JackThr: Checker = Checker(tx)
+        JackThr: Checker = Checker(tx.hex())
         JackThr.total_console()
     return True
